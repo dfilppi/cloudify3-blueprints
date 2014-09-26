@@ -1,0 +1,100 @@
+#######
+# Cloudify generic blueprint template
+#
+imports:
+     -  http://www.getcloudify.org/spec/cloudify/3.0/types.yaml
+     -  http://www.getcloudify.org/spec/bash-plugin/1.0/plugin.yaml
+
+plugins:
+    config_plugin:
+        derived_from: cloudify.plugins.agent_plugin
+        properties:
+            folder: config-plugin
+
+    admin_plugin:
+        derived_from: cloudify.plugins.agent_plugin
+        properties:
+            folder: admin-plugin
+
+    workflow_plugin:
+        derived_from: cloudify.plugins.manager_plugin
+        properties:
+            folder: workflow-plugin
+
+workflows:
+    run_script:
+        mapping: workflow_plugin.tasks.simple_workflow
+        parameters:
+            - node_name: server
+            - operation: run_script
+            
+types:
+    server_type:
+        derived_from: cloudify.types.bash.app_server
+        #values in properties are defaults
+        properties:
+          - dummy_prop: whatever
+          - scripts:
+              create: server-scripts/install.sh
+              start: server-scripts/start.sh
+              stop: server-scripts/stop.sh
+            
+    client_type:
+        derived_from: cloudify.types.bash.app_server
+        #values in properties are defaults
+        properties:
+          - dummy_prop: dummy
+          - scripts:
+              create: client-scripts/install.sh
+              start: client-scripts/start.sh
+              stop: client-scripts/stop.sh
+
+relationships:
+    client_relationship:
+        derived_from: cloudify.relationships.connected_to
+        source_interfaces:
+            cloudify.interfaces.relationship_lifecycle:
+                - postconfigure: config_plugin.tasks.relationship_get_ip
+     
+blueprint:
+    name: my-blueprint
+    nodes:
+        -   name: server_vm
+            type: cloudify.types.host
+            properties:
+                ip: 127.0.0.1
+                cloudify_agent:
+                    key: /home/vagrant/.ssh/cloudify_private_key
+                    user: vagrant
+
+        -   name: client_vm
+            type: cloudify.types.host
+            properties:
+                ip: 127.0.0.1
+                cloudify_agent:
+                    key: /home/vagrant/.ssh/cloudify_private_key
+                    user: vagrant
+
+        -   name: server
+            type: server_type
+            properties:
+                dummy_prop: overridden
+            interfaces:
+                admin.commands:
+                  -  run_script:
+                          mapping: admin_plugin.tasks.run_a_script
+                          properties:
+                              script: server-scripts/script.sh
+            relationships:
+                -   target: server_vm
+                    type: cloudify.relationships.contained_in
+            
+        -   name: client_app
+            type: client_type
+            properties:
+                dummy_prop: overridden
+            relationships:
+                -   target: client_vm
+                    type: cloudify.relationships.contained_in
+                -   target: server
+                    type: client_relationship
