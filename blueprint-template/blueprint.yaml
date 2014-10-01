@@ -67,14 +67,14 @@ blueprint:
                     key: /home/vagrant/.ssh/cloudify_private_key
                     user: vagrant
 
-#        -   name: client_vm
-#            type: cloudify.types.host
-#            properties:
-#                ip: 127.0.0.1
-#                cloudify_agent:
-#                    key: /home/vagrant/.ssh/cloudify_private_key
-#                    user: vagrant
-#
+        -   name: client_vm
+            type: cloudify.types.host
+            properties:
+                ip: 127.0.0.1
+                cloudify_agent:
+                    key: /home/vagrant/.ssh/cloudify_private_key
+                    user: vagrant
+
         -   name: server
             type: server_type
             properties:
@@ -89,12 +89,12 @@ blueprint:
                 -   target: server_vm
                     type: cloudify.relationships.contained_in
             
-#        -   name: client_app
-#            type: client_type
-#            properties:
-#                dummy_prop: overridden
-#            relationships:
-#                -   target: client_vm
-#                    type: cloudify.relationships.contained_in
-#                -   target: server
-#                    type: client_relationship
+        -   name: client_app
+            type: client_type
+            properties:
+                dummy_prop: overridden
+            relationships:
+                -   target: client_vm
+                    type: cloudify.relationships.contained_in
+                -   target: server
+                    type: client_relationship
