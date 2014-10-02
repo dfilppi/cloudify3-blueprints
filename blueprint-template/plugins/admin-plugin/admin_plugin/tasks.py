@@ -39,7 +39,6 @@ def run_a_script(ctx, **kwargs):
     # download them prior to execution.
     script_path = ctx.download_resource(script)
     subprocess.check_call(["chmod", "777", script_path])
-    output = subprocess.check_output([script_path, kwargs["grid_name"], kwargs["schema"], str(kwargs["partitions"]),
-                                      str(kwargs["backups"]), str(kwargs["max_per_vm"]), str(kwargs["max_per_machine"])])
+    output = subprocess.check_output([script_path])
     ctx.logger.info(script_path + " output:" + output)
 
