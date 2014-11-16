@@ -10,6 +10,7 @@ cfy_info "getting java"
 if [[ ! -z $YUM_CMD ]]; then
    sudo yum -y -q install java-1.7.0-openjdk || exit $?   
 else
+   sudo apt-get update
    sudo apt-get -f install libdevmapper-event1.02.1
    sudo apt-get -qq --no-upgrade install openjdk-7-jdk || exit $?   
 fi
@@ -37,7 +38,7 @@ if [ ! -d $DIR/xap ]; then
   unzip *.zip
   popd
 
-  GSDIR=`ls -d $DIR/xap/gigaspaces*premium*ga`
+  GSDIR=`ls -d $DIR/xap/gigaspaces*premium*m4`
   echo $GSDIR > /tmp/gsdir
 
   cfy_info "GSDIR=$GSDIR" 
