@@ -1,7 +1,7 @@
 tosca_definitions_version: cloudify_dsl_1_0
 
 #######
-# Cloudify Blueprint which describes a xap cluster (single node)
+# Cloudify Blueprint which describes a xap cluster
 #
 imports:
     - http://www.getcloudify.org/spec/cloudify/3.1/types.yaml
@@ -228,7 +228,7 @@ node_templates:
 
 groups:
 
-    autohealing_group':
+    autohealing_group:
       members: [xap_mgmt_vm,xap_container_vm,webui]
       policies:
         simple_autoheal_policy:
