@@ -1,0 +1,41 @@
+This is a blueprint for installing XAP on 2 pre-provisioned Windows machines.
+
+Prerequisites
+2 Windows 2012 machines with WinRM enabled and Python 2.7 installed.
+init.ps1 script may be used to perform the initial setup.
+2 GB and 1 GB of RAM are advised for manager and grid nodes respectively.
+
+
+Agent Installation
+Agent is installed into C:\CloudifyAgent. Use celery.log for troubleshooting.
+
+
+Java Installation
+jdk_download_url should point to a zip file containing JDK msi and cab files.
+This differs from a regular Windows JDK installer since it is an exe file that 
+extracts msi and cabs into a temporary dir. For details, check
+http://www.74k.org/extracting-java-msi-from-java-exe
+
+JDK installer name is hardcoded to jdk1.7.0_79.msi (not configurable).
+
+
+XAP
+XAP zip is expected to contain gigaspaces-xap-premium-10.1.1-ga (not 
+configurable). Archive is extracted to C:\gs.
+
+Web UI is started on the manager node and is available on port 8099.
+
+
+Networking
+Unicast discovery is used in the setup, so multicast support is not required.
+Windows machines must be able to resolve each others hostnames. If this is not 
+true, etc/hosts manipulation is required.
+
+
+Security
+WinRM is used in HTTP with basic authentication, so Windows username and 
+password information is transmitted as cleartext. Because of that, the 
+communication between Cloudify manager and Windows hosts has to be done over a 
+secure channel (not Internet).
+For proper XAP node discovery, Windows firewall is being disabled during 
+installation.

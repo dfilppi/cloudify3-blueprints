@@ -1,0 +1,312 @@
+tosca_definitions_version: cloudify_dsl_1_1
+
+imports:
+  - http://www.getcloudify.org/spec/cloudify/3.2/types.yaml
+  - plugins/servicebouncer/plugin.yaml
+
+plugins:
+  windows_host_plugin:
+    source: windows-host-plugin
+    executor: host_agent
+
+inputs:
+    manager_ip:
+      description: >
+        IP address of the manager Windows host
+
+    grid_ip:
+      description: >
+        IP address of the grid Windows host
+
+    username:
+      description: >
+        Windows admin username
+
+    password:
+      description: >
+        Windows admin password
+
+    jdk_download_url:
+      description: >
+        Link to JDK/JRE installation download, it has to be zipped MSI+CAB files
+
+    license_key:
+      description: >
+        XAP license key to be put into gslicense.xml
+
+    xap_download_url:
+      description: >
+        Link to XAP installation download
+
+node_types:
+  cloudify.windows.nodes.Server:
+    derived_from: cloudify.nodes.Compute
+    interfaces:
+      cloudify.interfaces.worker_installer:
+        install: windows_agent_installer.windows_agent_installer.tasks.install
+        start: windows_agent_installer.windows_agent_installer.tasks.start
+        stop: windows_agent_installer.windows_agent_installer.tasks.stop
+        uninstall: windows_agent_installer.windows_agent_installer.tasks.uninstall
+        restart: windows_agent_installer.windows_agent_installer.tasks.restart
+      cloudify.interfaces.plugin_installer:
+        install: windows_plugin_installer.windows_plugin_installer.tasks.install
+  jdk_type:
+    derived_from: cloudify.nodes.ApplicationServer
+    properties:
+      jdk_download_url:
+        type: string
+        default: ''
+  xap_type:
+    derived_from: cloudify.nodes.ApplicationServer
+    properties:
+      license_key:
+        type: string
+        default: ''
+      xap_download_url:
+        type: string
+        default: ''
+      locator_ip:
+        type: string
+        default: ''
+      gs_agent_args:
+        type: string
+        default: ''
+  datagrid_type:
+    derived_from: cloudify.nodes.ApplicationServer
+    properties:
+      locator_ip:
+        type: string
+        default: ''
+  gridservice_type:
+    derived_from: cloudify.nodes.ApplicationServer
+
+node_templates:
+  manager_windows_host:
+    type: cloudify.windows.nodes.Server
+    properties:
+      install_agent: true
+      ip: { get_input: manager_ip }
+    interfaces:
+      cloudify.interfaces.worker_installer:
+        install:
+          inputs:
+            cloudify_agent: &CLOUDIFY_AGENT
+              user: { get_input: username }
+              password: { get_input: password }
+        start:
+          inputs:
+            cloudify_agent: *CLOUDIFY_AGENT
+
+        stop:
+          inputs:
+            cloudify_agent: *CLOUDIFY_AGENT
+        uninstall:
+          inputs:
+            cloudify_agent: *CLOUDIFY_AGENT
+        restart:
+          inputs:
+            cloudify_agent: *CLOUDIFY_AGENT
+      cloudify.interfaces.plugin_installer:
+        install:
+          inputs:
+            cloudify_agent: *CLOUDIFY_AGENT
+  grid_windows_host:
+    type: cloudify.windows.nodes.Server
+    properties:
+      install_agent: true
+      ip: { get_input: grid_ip }
+    interfaces:
+      cloudify.interfaces.worker_installer:
+        install:
+          inputs:
+            cloudify_agent: *CLOUDIFY_AGENT
+        start:
+          inputs:
+            cloudify_agent: *CLOUDIFY_AGENT
+
+        stop:
+          inputs:
+            cloudify_agent: *CLOUDIFY_AGENT
+        uninstall:
+          inputs:
+            cloudify_agent: *CLOUDIFY_AGENT
+        restart:
+          inputs:
+            cloudify_agent: *CLOUDIFY_AGENT
+      cloudify.interfaces.plugin_installer:
+        install:
+          inputs:
+            cloudify_agent: *CLOUDIFY_AGENT
+  manager_javajdk:
+    type: jdk_type
+    properties:
+      jdk_download_url: { get_input: jdk_download_url }
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        create:
+          implementation: scripts/install_jdk.ps1
+          inputs:
+            process:
+              command_prefix: powershell
+        delete:
+          implementation: scripts/uninstall_jdk.ps1
+          inputs:
+            process:
+              command_prefix: powershell
+    relationships:
+      -  type: cloudify.relationships.contained_in
+         target: manager_windows_host
+  grid_javajdk:
+    type: jdk_type
+    properties:
+      jdk_download_url: { get_input: jdk_download_url }
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        create:
+          implementation: scripts/install_jdk.ps1
+          inputs:
+            process:
+              command_prefix: powershell
+        delete:
+          implementation: scripts/uninstall_jdk.ps1
+          inputs:
+            process:
+              command_prefix: powershell
+    relationships:
+      -  type: cloudify.relationships.contained_in
+         target: grid_windows_host
+  manager_xap:
+    type: xap_type
+    properties:
+      license_key: { get_input: license_key }
+      xap_download_url: { get_input: xap_download_url }
+      locator_ip: { get_input: manager_ip }
+      gs_agent_args: gsa.gsm 1 gsa.global.gsm 0 gsa.lus 1 gsa.global.lus 0 gsa.gsc 1
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        create:
+          implementation: scripts/install_xap.ps1
+          inputs:
+            process:
+              command_prefix: powershell
+        delete:
+          implementation: scripts/uninstall_xap.ps1
+          inputs:
+            process:
+              command_prefix: powershell
+    relationships:
+      -  type: cloudify.relationships.contained_in
+         target: manager_windows_host
+      -  type: cloudify.relationships.depends_on
+         target: manager_javajdk
+  grid_xap:
+    type: xap_type
+    properties:
+      license_key: { get_input: license_key }
+      xap_download_url: { get_input: xap_download_url }
+      locator_ip: { get_input: manager_ip }
+      gs_agent_args: gsa.gsm 0 gsa.global.gsm 0 gsa.lus 0 gsa.global.lus 0 gsa.gsc 1
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        create:
+          implementation: scripts/install_xap.ps1
+          inputs:
+            process:
+              command_prefix: powershell
+        delete:
+          implementation: scripts/uninstall_xap.ps1
+          inputs:
+            process:
+              command_prefix: powershell
+    relationships:
+      -  type: cloudify.relationships.contained_in
+         target: grid_windows_host
+      -  type: cloudify.relationships.depends_on
+         target: grid_javajdk
+  manager_xapgs:
+    type: gridservice_type
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        start:
+          implementation: scripts/start_xapgs.ps1
+          inputs:
+            process:
+              command_prefix: powershell
+        stop:
+          implementation: scripts/stop_xapgs.ps1
+          inputs:
+            process:
+              command_prefix: powershell
+    relationships:
+      -  type: cloudify.relationships.contained_in
+         target: manager_windows_host
+      -  type: cloudify.relationships.depends_on
+         target: manager_xap
+  grid_xapgs:
+    type: gridservice_type
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        start:
+          implementation: scripts/start_xapgs.ps1
+          inputs:
+            process:
+              command_prefix: powershell
+        stop:
+          implementation: scripts/stop_xapgs.ps1
+          inputs:
+            process:
+              command_prefix: powershell
+    relationships:
+      -  type: cloudify.relationships.contained_in
+         target: grid_windows_host
+      -  type: cloudify.relationships.depends_on
+         target: grid_xap
+      -  type: cloudify.relationships.depends_on
+         target: manager_xapgs
+  xapweb:
+    type: cloudify.nodes.ApplicationModule
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        start:
+          implementation: scripts/start_xapweb.ps1
+          inputs:
+            process:
+              command_prefix: powershell
+        stop:
+          implementation: scripts/stop_xapweb.ps1
+          inputs:
+            process:
+              command_prefix: powershell
+    relationships:
+      -  type: cloudify.relationships.contained_in
+         target: manager_windows_host
+      -  type: cloudify.relationships.depends_on
+         target: manager_xapgs
+  datagrid:
+    type: datagrid_type
+    properties:
+      locator_ip: { get_input: manager_ip }
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        start:
+          implementation: scripts/start_datagrid.ps1
+          inputs:
+            process:
+              command_prefix: powershell
+        deploy_alternate:
+          implementation: scripts/start_datagrid_alternate.ps1
+          inputs:
+            process:
+              command_prefix: powershell
+    relationships:
+      -  type: cloudify.relationships.contained_in
+         target: manager_windows_host
+      -  type: cloudify.relationships.depends_on
+         target: manager_xapgs
+      -  type: cloudify.relationships.depends_on
+         target: grid_xapgs
+
+workflows:
+  bounce_gs: servicebouncer.bounce.bounce.bounce_gridservice
+  deploy_datagrid: servicebouncer.bounce.bounce.deploy_datagrid
+  deploy_alternate: servicebouncer.bounce.bounce.deploy_alternate

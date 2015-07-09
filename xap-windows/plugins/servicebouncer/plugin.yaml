@@ -1,0 +1,4 @@
+plugins:
+  servicebouncer:
+    executor: central_deployment_agent
+    source: servicebouncer
